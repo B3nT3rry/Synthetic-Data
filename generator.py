@@ -110,3 +110,59 @@ class datagenerator:
                     specialty_weights = {'Respiratory Medicine':0.06, 'General Medicine': 0.3, 'Other': 0.1}
                 else:
                     specialty_weights = self.meta_conditions['specialties']
+
+                spell = {
+                    'nhs_number': patient['nhs_number'],
+                    'spell_id': f'S{len(spells):06d}',
+                    'admission_date': admission_date,
+                    'admission_method': np.random.choice(
+                        list(self.meta_conditions['admission_methods'].keys()),
+                        p=list(self.meta_conditions['admission_methods'].values())
+                    ),
+                    'admission_source': np.random.choice(
+                        list(self.meta_conditions['admission_source'].keys()),
+                        p=list(self.meta_conditions['admission_source'].values())
+                    ),
+                    'specialty': np.random.choice(
+                        list(specialty_weights.keys()),
+                        p=[specialty_weights[k]/sum(specialty_weights.values()) for k in specialty_weights.keys()]
+                    )
+                }
+
+                # generate length of stay based on admission type and conditions
+                if spell['admission_method'] == 'Day Case':
+                    los = 0 
+                elif spell['admission_method']== ' Elective':
+                    los = np.random.geometric(0.3)
+                else: #Emergency
+                    los = np.random.geometric(0.2)
+                    if any(c in ['Heart Failure','Pneumonia'] for c in conditions):
+                        los += np.random.geometric(0.15)
+
+                spell['discharge_date'] = admission_date + pd.Timedelta(days=los)
+                spell['length_of_stay'] = los
+
+                spell['discharge_destination'] = np.random.choice(
+                    list(self.meta_conditions['discharge_destination'].keys()),
+                    p=list(self.meta_conditions['discharge_destination'].values())
+                )
+
+                #Add diagnosis codes 
+                primary_diagnosis = self.generate_diagnosis_codes(conditions, spell['admission_method'])
+                spell['primary_diagnosis'] = primary_diagnosis
+                spell['secondary_diagnoses'] = ';'.join(self.generate.secondary_diagnoses(conditions, primary_diagnosis))
+
+                #Add procedures if applicable
+                spell['procedures'] = ';'.join(self.generate_procedures(
+                    conditions,
+                    spell['specialty'],
+                    spell['admission_method']
+                ))
+
+                #Add critical care details if applicable
+                if spell['admission_method'] == 'Emergency' and np.random.random() <0.15:
+                    spell.update(self.generate_critical_care_stay(spell['admission_date'], los))
+
+                spells.append(spell)
+
+        return pd.DataFrame(spells)
