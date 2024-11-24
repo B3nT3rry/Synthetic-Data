@@ -99,3 +99,14 @@ class datagenerator:
 
             for _ in range(num_admissions):
                 # Generate admission details
+                admission_date = pd.Timestamp(start_date) + pd.Timedelta(
+                    days=np.random.randint(0, (pd.Timestamp(end_date) - pd.Timestamp(start_date)).days)
+                )
+
+                # Determisn admission type and specialty based on conditions
+                if any(c in ['Coronary Heart Disease','Heart Failure'] for c in conditions):
+                    specialty_weights = {'Cardiology': 0.06, 'General Medicine': 0.3, 'Other': 0.1}
+                elif any(c in ['COPD','Asthma'] for c in conditions):
+                    specialty_weights = {'Respiratory Medicine':0.06, 'General Medicine': 0.3, 'Other': 0.1}
+                else:
+                    specialty_weights = self.meta_conditions['specialties']
