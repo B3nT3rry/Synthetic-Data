@@ -166,3 +166,54 @@ class datagenerator:
                 spells.append(spell)
 
         return pd.DataFrame(spells)
+    
+    def generate_ae_attendances(self, patient_data, start_date, end_date):
+        # Generate A&E attendance records
+        attendances = []
+
+        for _, patient in patient_data.iterrows():
+            conditions = patient['condtions'].split(';') if patient['conditions'] != 'None' else []
+
+            # Calculate number of A&E visits
+            base_rate = 0.3
+            condition_factor = len(conditions) * 0.1
+            age_factor = max(0, (patient['age'] - 50) * 0.01)
+            deprivation_factor = (11 - patient['imd_decile']) * 0.02
+
+            num_visits = np.random.possion(
+                base_rate + condition_factor + age_factor + deprivation_factor
+            )
+
+            for _ in range(num_visits):
+                arrival_date = pd.Timestamp(start_date) + pd.Timedelta(
+                    days=np.random.randint(0, (pd.Timestamp(end_date) - pd.Timestamp(start_date)).days)
+                )
+
+                # Determine arrival time ( more visits in the daytime and evening)
+                hour = np.random.choice(24, p=self.generate_arrival_time_distribution())
+                arrival_datetime = arrival_date + pd.Timedelta(hours=hour)
+
+                attendance = {
+                    'nhs_number': patient['nhs_number'],
+                    'attendance_id': f'A{len(attendances):06d}',
+                    'arrivale_datetime': arrival_datetime,
+                    'arrival_mode': np.random.choice(
+                        ['Ambulance', 'Self-presented','Other'],
+                        p=[0.3, 0.65, 0.05]
+                    ),
+                    'reason': self.generate_ae_reason(conditions)
+                }
+
+                # Generate waiting time and treatment time
+                attendance['waiting_time_mins'] = np.random.exponential(60) # average 1 hour wait 
+                attendance['treatment_time_mins'] = np.random.exponential(120) # average 2 hour treatment
+
+                # Determine outcome
+                attendance['outcome'] = self.generate_ae_outcome(
+                    conditions,
+                    attendance['reason']
+                )
+
+                attendances.append(attendance)
+
+        return pd.DataFrame(attendances)
