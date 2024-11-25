@@ -217,3 +217,48 @@ class datagenerator:
                 attendances.append(attendance)
 
         return pd.DataFrame(attendances)
+
+    def generate_outpatient_appointments(self, patient_data, start_date, end_date):
+        # Generate outpatient appointment records
+        appointments = []
+
+        for _, patient in patient_data.iterrows():
+            conditions = patient['conditions'].split(';') if patient['conditions'] != 'None' else []
+
+            # Calculate number of appointments based on conditions
+            for condition in conditions:
+                if condition == 'None':
+                    continue
+
+                # Number of appointments varies by condition
+                if condition in ['Type 2 Diabetes', 'Heart Failure']:
+                    num_appointments = np.random.poisson(4) # more frequent follow-up
+                else:
+                    num_appointments = np.random.poisson(2)
+
+                for _ in range(num_appointments):
+                    appointment_date = pd.Timestamp(start_date) + pd.Timedelta(
+                        days=np.random.randint(0, (pd.Timestamp(end_date) - pd.Timestamp(start_date)).days)
+                    )
+
+                    specialty = self.get_condition_specialty(condition)
+
+                    appointment = {
+                        'nhs_number': patient['nhs_number'],
+                        'appointment_id': f'0{len(appointments):06d}',
+                        'appointment_date': appointment_date,
+                        'specialty': specialty,
+                        'appointment_type': np.random.choice(
+                            ['New', 'Follow-up'],
+                            p=[0.2, 0.8]
+                        ),
+                        'referral_source': 'GP' if np.random.random() <0.8 else 'Consultant', 
+                        'attendance_status': np.random.choice(
+                            ['Attended', 'DNA', 'Cancelled'],
+                            p=[0.85, 0.10, 0.05]
+                        )
+                    }
+
+                    appointments.append(appointment)
+            
+            return pd.DataFrame(appointments)
