@@ -262,3 +262,8 @@ class datagenerator:
                     appointments.append(appointment)
             
             return pd.DataFrame(appointments)
+
+    def generate_diagnosis_codes(self, conditions, admission_method):
+        # Generate primary ICD-10 diagnosis code based on conditions
+        if not conditions or conditions == ['None']:
+            
