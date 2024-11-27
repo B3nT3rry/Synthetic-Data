@@ -266,4 +266,30 @@ class datagenerator:
     def generate_diagnosis_codes(self, conditions, admission_method):
         # Generate primary ICD-10 diagnosis code based on conditions
         if not conditions or conditions == ['None']:
-            
+            #Generate random acute condition for emergency admissions
+            if admission_method == 'Emergency':
+                return np.random.choice([
+                    'R07.4', # Chest Pain
+                    'R10.4', # Abdominal Pain
+                    'J18.9', # Pneumonia
+                    'N39.0', # UTI
+                    'k59.9', # Bowel disorder
+                ])
+            return 'Z00.0' # General examination
+
+        # Select primary condition based on severity and acuity
+        condition_weights = {}
+        for condition in conditions:
+            if condition in self.icd10_codes:
+                weight = 1.0
+                if admission_method == 'Emergency':
+                    weight = 2.0 if condition in ['Coronary Heart Disease','Heart Failure','COPD'] else 1.0
+                condition_weights[condition] = weight
+
+        if condition_weights:
+            selected_condition = np.random.choice(
+                list(condition_weights.keys()),
+                p=[w/sum(condition_weights.values()) for w in condition_weights.values()]
+            )
+            return np.random.choice(self.icd10_codes[selected_condition])
+        return 'Z00.0'
